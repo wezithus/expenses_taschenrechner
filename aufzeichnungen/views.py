@@ -4,11 +4,14 @@
 """ This module provides view to manage aufzeichnungen table """
 
 from datetime import date
+from xml.dom import ValidationErr
 from .model import Record
 
 from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import *
+
+
 
 class Window(QMainWindow):
     """Main Window"""
@@ -26,6 +29,7 @@ class Window(QMainWindow):
         """set base styles"""
         self.setWindowTitle("Taschenrechner")
         self.setFont(QFont("Myanmar Text"))
+        self.setGeometry(0, 0, 600, 500)
 
         self._setRecordsTable()
 
@@ -61,13 +65,20 @@ class Window(QMainWindow):
         """open dialog for adding records"""
         dialog = AddRecordDialog(self)
         if dialog.exec() == QDialog.Accepted:
-            self.records.addRecord(dialog.data)
+            try:
+                self.records.addRecord(dialog.data)
+            except ValidationErr as e:
+                QMessageBox.critical(
+                    self, "Error", f"{e}"
+                )
             self.recordTable.resizeColumnsToContents()
 
-    
     def _setRecordsTable(self):
         self.recordTable = QTableView()
+        self.recordTable.setModel(self.records.model)
+        self.recordTable.hideColumn(0)
         self.recordTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.recordTable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.recordTable.resizeColumnsToContents()
 
 class AddRecordDialog(QDialog):
@@ -103,36 +114,42 @@ class AddRecordDialog(QDialog):
         self.dateField.setDate(QDate(date.today()))
         self.dateField.setObjectName("ရက်စွဲ")
 
+        """value_limit"""
+        self.limitField = QSpinBox()
+        self.limitField.setMaximum(100000)
+        self.limitField.setObjectName("ကာမည့် ပမာဏ")
+
         """record_type"""
-        self.recordTypeComboBox = QComboBox()
-        self.recordTypeComboBox.addItems([" ","2D", "3D"])
-        self.recordTypeComboBox.setObjectName("အမျိုးအစား")
+        self.digitsComboBox = QComboBox()
+        self.digitsComboBox.addItems([" ","2D", "3D"])
+        self.digitsComboBox.setObjectName("အမျိုးအစား")
 
         """limit specifications"""
-        self.limitComboBox = QComboBox()
-        self.limitComboBox.addItems([])
-        self.limitComboBox.setObjectName("စာရင်းပိတ်ချိန်")
+        self.curfewComboBox = QComboBox()
+        self.curfewComboBox.addItems([])
+        self.curfewComboBox.setObjectName("စာရင်းပိတ်ချိန်")
         """limit depends on record_type"""
-        self.recordTypeComboBox.currentTextChanged.connect(self.updateLimitBox)
+        self.digitsComboBox.currentTextChanged.connect(self.updateLimitBox)
 
         """creating table layout"""
         createTableLayout = QFormLayout()
         createTableLayout.addRow(QLabel("ရက်စွဲ"), self.dateField)
-        createTableLayout.addRow(QLabel("အမျိုးအစား"), self.recordTypeComboBox)
-        createTableLayout.addRow(QLabel("စာရင်းပိတ်ချိန်"), self.limitComboBox)
+        createTableLayout.addRow(QLabel("အမျိုးအစား"), self.digitsComboBox)
+        createTableLayout.addRow(QLabel("စာရင်းပိတ်ချိန်"), self.curfewComboBox)
+        createTableLayout.addRow(QLabel("ကာမည့် ပမာဏ"), self.limitField)
 
         """registering table layout group"""
         self.recordFormGroup.setLayout(createTableLayout)
         
     def updateLimitBox(self):
         """Reset"""
-        self.limitComboBox.clear()
-        if self.recordTypeComboBox.currentText() == "2D":
-            self.limitComboBox.addItems(["မနက်ပိုင်း", "ညနေပိုင်း"])
-        elif self.recordTypeComboBox.currentText() == "3D":
-            self.limitComboBox.addItems(["လဝက်", "လကုန်"])
+        self.curfewComboBox.clear()
+        if self.digitsComboBox.currentText() == "2D":
+            self.curfewComboBox.addItems(["မနက်ပိုင်း", "ညနေပိုင်း"])
+        elif self.digitsComboBox.currentText() == "3D":
+            self.curfewComboBox.addItems(["လဝက်", "လကုန်"])
         else:
-             self.limitComboBox.clear()
+             self.curfewComboBox.clear()
 
     def accept(self):
         """Accept the data provided through the dialog."""
@@ -146,10 +163,9 @@ class AddRecordDialog(QDialog):
                 )
             self.data = None
             return
-    
         self.data.append(self.dateField.date().toPyDate())
-
-        for comboBox in (self.recordTypeComboBox, self.limitComboBox):
+        
+        for comboBox in (self.digitsComboBox, self.curfewComboBox):
             if not comboBox.currentText():
                 QMessageBox.critical(
                     self,
@@ -158,6 +174,17 @@ class AddRecordDialog(QDialog):
                 )
                 self.data = None
                 return
-            self.data.append(comboBox.currentText())
+            self.data.append(comboBox.currentIndex())
+
+        if not self.limitField.text():
+            QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"{self.limitField.objectName()} ကိုဖြည့်ပေးပါ"
+                )
+            self.data = None
+            return
+        self.data.append(self.limitField.text())
+
         super().accept()
     

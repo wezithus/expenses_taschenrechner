@@ -16,9 +16,10 @@ def _createRecordsTable():
         """
         CREATE TABLE IF NOT EXISTS records (
             id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,
-            date VARCHAR(40) NOT NULL,
-            record_type VARCHAR(50) NOT NULL,
-            time_limit VARCHAR(50) NOT NULL,
+            date VARCHAR(10) NOT NULL,
+            digits VARCHAR(1) NOT NULL,
+            curfew VARCHAR(1) NOT NULL,
+            cover VARCHAR(10) NOT NULL,
             created_at DATE NOT NULL
         )
         """
