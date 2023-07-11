@@ -5,6 +5,11 @@
 
 from datetime import date
 from xml.dom import ValidationErr
+
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QStyleOptionViewItem
+
+from aufzeichnungen.helpers import BurInt
 from .model import Record
 
 from PyQt5.QtCore import QDate
@@ -31,10 +36,10 @@ class Window(QMainWindow):
         self.setFont(QFont("Myanmar Text"))
         self.setGeometry(0, 0, 600, 500)
 
-        self._setRecordsTable()
+        """create view table"""
+        self._createRecordsTable()
 
         """buttons"""
-
         """create button"""
         self.createButton = QPushButton("အသစ်လုပ်မည်")
         self.createButton.clicked.connect(self.openAddRecordDialog)
@@ -73,13 +78,26 @@ class Window(QMainWindow):
                 )
             self.recordTable.resizeColumnsToContents()
 
-    def _setRecordsTable(self):
+    def _createRecordsTable(self):
         self.recordTable = QTableView()
+        """delegates"""
+        numberDele = NumberDelegate(self.recordTable)
+        self.recordTable.setItemDelegateForColumn(4, numberDele)
+
+        """setting models"""
         self.recordTable.setModel(self.records.model)
+        """hide id column"""
         self.recordTable.hideColumn(0)
+        """selection mode"""
         self.recordTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.recordTable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        """resizing"""
         self.recordTable.resizeColumnsToContents()
+
+class NumberDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option: QStyleOptionViewItem, index: QtCore.QModelIndex) -> None:
+        super(NumberDelegate, self).initStyleOption(option, index)
+        n = BurInt(index.data())
+        option.text = n.formatBurmeseValue()
 
 class AddRecordDialog(QDialog):
     """ Dialog for adding records """
